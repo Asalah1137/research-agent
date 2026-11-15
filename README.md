@@ -126,8 +126,6 @@ These are preserved development outputs. The first is an early draft; the others
 
 ## Test status
 
-## Test status
-
 [![Tests](https://github.com/Asalah1137/research-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/Asalah1137/research-agent/actions/workflows/tests.yml)
 
 ## Limitations
