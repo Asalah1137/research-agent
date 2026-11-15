@@ -126,9 +126,9 @@ These are preserved development outputs. The first is an early draft; the others
 
 ## Test status
 
-[![Tests](https://github.com/OWNER/REPO/actions/workflows/tests.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/tests.yml)
+## Test status
 
-Replace `OWNER/REPO` in the badge after creating your repository.
+[![Tests](https://github.com/Asalah1137/research-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/Asalah1137/research-agent/actions/workflows/tests.yml)
 
 ## Limitations
 
