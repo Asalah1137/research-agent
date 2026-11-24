@@ -1,5 +1,6 @@
 """Start the local MCP server and call its tools over stdio."""
 
+import logging
 import os
 import sys
 from collections.abc import AsyncIterator
@@ -11,6 +12,7 @@ from mcp.client.stdio import stdio_client
 
 from agent import config
 
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def connect_mcp() -> AsyncIterator[ClientSession]:
@@ -35,16 +37,20 @@ async def call_tool(
     session: ClientSession, name: str, arguments: dict[str, str | int]
 ) -> list[dict[str, str]] | dict[str, str] | str:
     """Call a tool and unwrap the SDK's structured result."""
+    logger.info("stage=mcp.request tool=%s", name)
     try:
         result = await session.call_tool(name, arguments)
     except Exception as exc:
+        logger.warning("stage=mcp.transport_failed tool=%s error_type=%s message=%s", name, type(exc).__name__, exc)
         return {"error": f"MCP tool {name} failed: {exc}"}
     if result.is_error:
         message = "\n".join(block.text for block in result.content if block.type == "text")
+        logger.warning("stage=mcp.tool_failed tool=%s message=%s", name, message)
         return {"error": message or f"Tool {name} failed."}
 
     # The SDK wraps both of our tools' return types in {"result": ...}.
     data = result.structured_content
     if not data or "result" not in data:
+        logger.warning("stage=mcp.decode_failed tool=%s", name)
         return {"error": f"Tool {name} returned no structured result."}
     return data["result"]

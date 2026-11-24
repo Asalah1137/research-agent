@@ -1,12 +1,15 @@
 """A small Streamlit interface for the researcher agent."""
 
 import asyncio
+import logging
 
 import streamlit as st
 
 from agent import config
 from agent.runner import run_research
 from agent.state import ResearchState
+
+logging.basicConfig(level=config.LOG_LEVEL, format="%(levelname)s %(name)s %(message)s")
 
 NODE_LABELS = {
     "idle": "Idle",

@@ -55,6 +55,8 @@ If checks still fail at the limit, the latest report is returned as **`limited`*
 
 Empty searches get one LLM-rephrased retry. Failed pages are skipped and logged. Malformed JSON gets one retry, with both replies' reported tokens counted. Groq rate limits and connection failures have bounded retries; rate-limited web tools also wait and retry.
 
+Web tools log the search, fetch, content validation, and extraction stages. DDGS's generic no-result exception is reported as ambiguous rather than a confirmed empty return. Page fetch retries also cover selected transient 5xx and network/timeouts; an empty extraction gets one Trafilatura `favor_recall` pass. See [web research diagnostics](web_research.md) for configuration and live observations.
+
 ## Lessons from the saved development reports
 
 The original milestone reports are preserved in [`examples/`](../examples/) as historical outputs:

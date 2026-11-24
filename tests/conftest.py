@@ -9,12 +9,16 @@ from agent.state import ResearchPlan, Source
 
 @pytest.fixture(autouse=True)
 def offline_settings(monkeypatch):
+    monkeypatch.setattr(config, "LLM_PROVIDER", "groq")
     monkeypatch.setattr(config, "GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(config, "OPENROUTER_API_KEY", "test-openrouter-key")
     monkeypatch.setattr(config, "MAX_REFINEMENT_ROUNDS", 2)
     monkeypatch.setattr(config, "MAX_RETRIES", 2)
     monkeypatch.setattr(config, "MAX_SEARCH_RESULTS", 5)
     monkeypatch.setattr(config, "MAX_PAGES_READ", 5)
     monkeypatch.setattr(config, "MAX_CHARS_PER_PAGE", 1000)
+    monkeypatch.setattr(config, "SEARCH_BACKEND", "auto")
+    monkeypatch.setattr(config, "LOG_LEVEL", "INFO")
     attempted_requests = []
 
     def block_request(transport, request):

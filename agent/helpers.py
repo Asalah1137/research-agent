@@ -28,25 +28,26 @@ async def collect_sources(
                     session, "search_web", {"query": query, "max_results": config.MAX_SEARCH_RESULTS}
                 )
                 empty = not results or (
-                    isinstance(results, dict) and "no results" in results.get("error", "").lower()
+                    isinstance(results, dict) and results.get("reason") == "no_results_unknown"
                 )
                 if empty:
-                    logger.warning("Empty search %r; rephrasing and retrying once.", query)
+                    reason = results.get("reason") if isinstance(results, dict) else "empty_return"
+                    logger.warning("stage=collection.rephrase query=%r reason=%s retry=1", query, reason)
                     try:
                         query, used = llm.ask_llm_with_usage(rephrase_query_prompt(query, question))
                         tokens += used
                     except llm.LLMError as exc:
                         tokens += exc.tokens_used
-                        logger.warning("Could not rephrase search: %s", exc)
+                        logger.warning("stage=collection.rephrase_failed message=%s", exc)
                         continue
                     results = await call_tool(
                         session, "search_web", {"query": query, "max_results": config.MAX_SEARCH_RESULTS}
                     )
                 if isinstance(results, dict):
-                    logger.warning("Skipping search %r: %s", query, results["error"])
+                    logger.warning("stage=collection.search_skipped query=%r reason=%s message=%s", query, results.get("reason", "tool_error"), results["error"])
                     continue
                 if not results:
-                    logger.warning("Search %r still has no results; continuing.", query)
+                    logger.warning("stage=collection.empty_after_retry query=%r", query)
                 for result in results:
                     if result["url"] not in known_urls:
                         candidates.setdefault(result["url"], result)
@@ -67,10 +68,10 @@ async def collect_sources(
                     break
                 text = await call_tool(session, "read_page", {"url": page["url"]})
                 if isinstance(text, dict):
-                    logger.warning("Skipping page %s: %s", page["url"], text["error"])
+                    logger.warning("stage=collection.page_skipped url=%s message=%s", page["url"], text["error"])
                     continue
                 if not text.strip() or text.startswith("Error:"):
-                    logger.warning("Skipping page %s: %s", page["url"], text or "Empty page")
+                    logger.warning("stage=collection.page_skipped url=%s message=%s", page["url"], text or "Empty page")
                     continue
 
                 sources.append(
@@ -79,6 +80,7 @@ async def collect_sources(
                 next_number += 1
                 added += 1
     except Exception as exc:
-        logger.warning("Web collection failed: %s", exc)
+        logger.warning("stage=collection.failed message=%s", exc)
 
+    logger.info("stage=collection.complete new_sources=%d total_sources=%d rephrase_tokens=%d", len(sources) - len(existing), len(sources), tokens)
     return sources, tokens

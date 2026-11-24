@@ -11,7 +11,7 @@ from agent import llm, helpers
 from mcp_service.client import call_tool
 
 
-@pytest.mark.parametrize("outcome", ["new_page", "empty_again", "rephrase_error", "connect_error"])
+@pytest.mark.parametrize("outcome", ["new_page", "empty_unknown", "empty_again", "rephrase_error", "connect_error", "backend_error"])
 def test_empty_search_recovery_and_source_numbers(monkeypatch, source, outcome):
     existing = source.model_copy(update={"number": 4})
     searches, reads = [], []
@@ -25,6 +25,10 @@ def test_empty_search_recovery_and_source_numbers(monkeypatch, source, outcome):
     async def tool(session, name, arguments):
         if name == "search_web":
             searches.append(arguments["query"])
+            if outcome == "backend_error":
+                return {"error": "Backend failed with no results", "stage": "search", "reason": "backend_error"}
+            if outcome == "empty_unknown" and len(searches) == 1:
+                return {"error": "DDGS returned no usable results", "stage": "search", "reason": "no_results_unknown"}
             if len(searches) == 1 or outcome == "empty_again":
                 return []
             return [
@@ -44,14 +48,14 @@ def test_empty_search_recovery_and_source_numbers(monkeypatch, source, outcome):
     monkeypatch.setattr(llm, "ask_llm_with_usage", rephrase)
     sources, tokens = asyncio.run(helpers.collect_sources(["empty query"], "LangGraph", [existing], 1))
     assert sources[0] == existing
-    if outcome == "new_page":
+    if outcome in {"new_page", "empty_unknown"}:
         assert searches == ["empty query", "broader query"]
         assert reads == ["https://example.org/bad", "https://example.org/new"]
         assert len(sources) == 2 and sources[1].number == 5 and tokens == 13
     else:
         assert sources == [existing] and not reads
-        assert tokens == {"empty_again": 13, "rephrase_error": 7, "connect_error": 0}[outcome]
-    assert rephrase.call_count == (0 if outcome == "connect_error" else 1)
+        assert tokens == {"empty_again": 13, "rephrase_error": 7, "connect_error": 0, "backend_error": 0}[outcome]
+    assert rephrase.call_count == (0 if outcome in {"connect_error", "backend_error"} else 1)
     assert len(searches) <= 2
 
 

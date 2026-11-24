@@ -2,8 +2,10 @@
 
 import argparse
 import asyncio
+import logging
 import sys
 
+from agent import config
 from agent.runner import run_research
 
 
@@ -19,6 +21,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=config.LOG_LEVEL, format="%(levelname)s %(name)s %(message)s")
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
     main()

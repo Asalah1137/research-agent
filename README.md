@@ -40,7 +40,7 @@ See [architecture and design notes](docs/architecture.md) for node responsibilit
 - LangGraph for orchestration
 - Official Python MCP SDK over local stdio
 - DDGS, HTTPX, and Trafilatura for web research
-- Groq's official SDK, with `openai/gpt-oss-120b` configured through environment settings
+- Groq's official SDK by default, plus the OpenAI SDK for a temporary Nemotron/OpenRouter test
 - Streamlit UI and pytest tests
 
 ## Project structure
@@ -94,6 +94,30 @@ Open the root `.env` and add your key to `GROQ_API_KEY`. The model and other opt
 
 On macOS/Linux, use `.venv/bin/python` for installation, `cp .env.example .env`, and `source .venv/bin/activate`.
 
+### Temporary Nemotron test through OpenRouter
+
+Install the updated requirements, then set these entries in your ignored root `.env`:
+
+```dotenv
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL_NAME=nvidia/nemotron-3-ultra-550b-a55b:free
+```
+
+Fill in `OPENROUTER_API_KEY` locally. Requests use the OpenAI Python SDK at
+`https://openrouter.ai/api/v1` with `extra_body={"reasoning": {"enabled": True}}`.
+JSON output remains prompt-based and Pydantic-validated, with the existing one-retry
+behavior. Token totals use the API's `usage.total_tokens`, including reported
+reasoning tokens. The MCP tools are called directly by the research workflow.
+
+To return to Groq, change only `LLM_PROVIDER=groq` and restart Streamlit or the CLI.
+Your existing `GROQ_API_KEY` and `MODEL_NAME` still select the original Groq setup;
+Groq is also the default when `LLM_PROVIDER` is unset. Settings load at process start.
+Both providers use the existing `REQUEST_TIMEOUT` and `MAX_RETRIES` settings.
+
+API references: [OpenRouter's OpenAI SDK example](https://openrouter.ai/docs/quickstart#using-the-openai-sdk)
+and [reasoning tokens](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+
 ## Usage
 
 With the venv activated, run the Streamlit app:
@@ -108,7 +132,7 @@ Or run one question from the terminal:
 python run_cli.py "When is LangGraph useful for a researcher agent?"
 ```
 
-The CLI prints the report, status, elapsed time, and total tokens. Live runs need internet access and a Groq key; retries may make them take several minutes.
+The CLI prints the report, status, elapsed time, and total tokens. Live runs need internet access and the selected provider's key; retries may make them take several minutes.
 
 Run the automated tests:
 
@@ -133,4 +157,12 @@ These are preserved development outputs. The first is an early draft; the others
 - HTML-only reading and short source excerpts can miss evidence; blocked pages, PDFs, and JavaScript-heavy sites may be unavailable.
 - Citation numbers are checked in Python, but evidence support and coverage rely on an imperfect LLM critique. A valid citation is not proof of a claim.
 - The report target is approximately 600–1000 prose words, excluding references. Length and quality remain prompt-driven targets; two refinements may still return `limited`.
-- Search availability and Groq quotas affect runtime. There is no database, durable report store, or fallback LLM provider in v1.
+- Search availability and provider quotas affect runtime. There is no database, durable report store, or automatic LLM failover.
+
+## Web research diagnostics
+
+Set `LOG_LEVEL=INFO` to see stages such as `search.request`, `fetch.response`, and `extract.success` in the terminal. Search errors include a `stage` and `reason`; DDGS's generic “No results found” is labelled `no_results_unknown`, since the library cannot always distinguish absent matches from backend failures.
+
+`SEARCH_BACKEND=auto` keeps DDGS's default engine selection. You can pin one backend temporarily to investigate it. Page reading retries transient fetch failures, recognizes obvious access-challenge pages, and tries a recall-oriented Trafilatura pass only when default extraction is empty.
+
+See [web research diagnostics](docs/web_research.md) for log examples, failure-stage meanings, and observed live results.
