@@ -44,7 +44,7 @@ If checks still fail at the limit, the latest report is returned as **`limited`*
 ## Components and data flow
 
 - `agent/state.py` contains the Pydantic plan, source, critique, and run-state models. Source numbers remain stable as evidence grows.
-- `agent/prompts.py` contains all LLM prompt text. Groq calls use the model selected in `agent/config.py`.
+- `agent/prompts.py` contains all LLM prompt text. `agent/llm.py` uses the provider and model selected in `agent/config.py`.
 - `agent/helpers.py` shares web collection between Search and Targeted Research. The defaults keep five initial pages and at most two new pages per targeted pass, each truncated to 1,000 characters.
 - `mcp_service/client.py` starts `python -m mcp_service.server` using the caller's Python interpreter and the project root as its working directory. Module launch keeps package imports reliable.
 - The official MCP SDK carries requests over local **stdio**. `search_web` returns title/URL/snippet items; `read_page` uses HTTPX and Trafilatura for HTML text. Failures return error data.
@@ -53,7 +53,7 @@ If checks still fail at the limit, the latest report is returned as **`limited`*
 
 ## Recovery
 
-Empty searches get one LLM-rephrased retry. Failed pages are skipped and logged. Malformed JSON gets one retry, with both replies' reported tokens counted. Groq rate limits and connection failures have bounded retries; rate-limited web tools also wait and retry.
+Empty searches get one LLM-rephrased retry. Failed pages are skipped and logged. Malformed JSON gets one retry, with both replies' reported tokens counted. LLM rate limits and connection failures have bounded retries; rate-limited web tools also wait and retry.
 
 Web tools log the search, fetch, content validation, and extraction stages. DDGS's generic no-result exception is reported as ambiguous rather than a confirmed empty return. Page fetch retries also cover selected transient 5xx and network/timeouts; an empty extraction gets one Trafilatura `favor_recall` pass. See [web research diagnostics](web_research.md) for configuration and live observations.
 
@@ -66,4 +66,4 @@ The original milestone reports are preserved in [`examples/`](../examples/) as h
 - Missing measurements in extracted text do not justify claiming that no published measurements exist.
 - Short excerpts may omit important details, and valid citation numbers do not prove a claim is supported. The critique can also miss issues or flag valid claims.
 
-Those reports discuss general LangGraph capabilities such as database-backed checkpointing and human review. This project's v1 uses in-memory run state and Streamlit session state; it does not configure a database, durable checkpoints, human-review nodes, or a fallback LLM provider.
+Those reports discuss general LangGraph capabilities such as database-backed checkpointing and human review. This project uses in-memory run state and Streamlit session state. Groq and OpenRouter are selected explicitly; there is no automatic provider failover.
